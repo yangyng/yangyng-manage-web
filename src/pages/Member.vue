@@ -65,7 +65,8 @@
     </el-table>
     <!--底部-->
     <el-col :span="24" class="toolbar">
-      <el-pagination layout="prev, pager, next" @current-change="handleCurrentChange" :page-size="20" :total="total"
+      <el-pagination layout="prev, pager, next" @current-change="handleCurrentChange" :page-size="size" :total="total"
+                     :current-page="nowPage"
                      style="float:right;">
       </el-pagination>
     </el-col>
@@ -112,7 +113,7 @@
       //页码
       page: 1,
       //每页数量
-      size: 40,
+      size: 10,
       //总数
       total: 0,
       //查询条件
@@ -148,16 +149,18 @@
   let handleDelete = function (index, row) {
     if (this.pageLoading)
       return
-
     this.$confirm('此操作将永久删除该数据, 是否继续?', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     }).then(() => {
       this.pageLoading = true
-      this.$axios.get('/api/member/remove/' + row.id).then(res => {
+      let params = {
+        userId: row.userId
+      }
+      this.$axios.post('/sysuser/del' ,params).then(res => {
         this.pageLoading = false
-        if (!res.data.success) {
+        if (!res.data.code == 200) {
           this.$message({
             type: 'error',
             message: res.data.message
@@ -168,6 +171,7 @@
           type: 'success',
           message: '删除成功!'
         })
+        alert("hhhhhhhh")
         this.page = 1
         this.getRows()
       }).catch(e => this.pageLoading = false)
@@ -179,15 +183,14 @@
     if (this.pageLoading)
       return
     this.pageLoading = true
-
     let params = {
-      page: this.page,
+      current: this.page,
       size: this.size,
-      query: this.filters.query
+      anyType: {}
     }
 
     //调用post请求
-    this.$axios.post('/sysuser/page', {}).then(res => {
+    this.$axios.post('/sysuser/page', params).then(res => {
       this.pageLoading = false
       if (!res.data || !(res.data.code.valueOf() == 200)) {
         return
@@ -209,29 +212,53 @@
         return
 
       this.formLoading = true
-
-      //调用http协议
-      this.$axios.post('/sysuser/save', this.form).then(res => {
-        this.formLoading = false
-        console.log(res)
-        if (!res.data.code == 200) {
+      if((this.form && this.form.userId)){
+        //调用http协议
+        this.$axios.post('/sysuser/update', this.form).then(res => {
+          this.formLoading = false
+          console.log(res)
+          if (!res.data.code == 200) {
+            this.$message({
+              showClose: true,
+              message: res.data.message,
+              type: 'error'
+            });
+            return
+          }
           this.$message({
-            showClose: true,
-            message: res.data.message,
-            type: 'error'
-          });
-          return
-        }
-        this.$message({
-          type: 'success',
-          message: '保存成功!'
-        })
+            type: 'success',
+            message: '修改成功!'
+          })
+          //重新载入数据
+          this.page = 1
+          this.getRows()
+          this.formVisible = false
+        }).catch(e => this.formLoading = false)
+      }else {
+        //调用http协议
+        this.$axios.post('/sysuser/save', this.form).then(res => {
+          this.formLoading = false
+          console.log(res)
+          if (!res.data.code == 200) {
+            this.$message({
+              showClose: true,
+              message: res.data.message,
+              type: 'error'
+            });
+            return
+          }
+          this.$message({
+            type: 'success',
+            message: '保存成功!'
+          })
 
-        //重新载入数据
-        this.page = 1
-        this.getRows()
-        this.formVisible = false
-      }).catch(e => this.formLoading = false)
+          //重新载入数据
+          this.page = 1
+          this.getRows()
+          this.formVisible = false
+          handleCurrentChange(this.page)
+        }).catch(e => this.formLoading = false)
+      }
     })
   }
 
